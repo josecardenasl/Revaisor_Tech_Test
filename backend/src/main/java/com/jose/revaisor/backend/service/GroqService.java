@@ -9,6 +9,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import com.jose.revaisor.backend.exception.AiServiceException;
+import org.springframework.web.client.RestClientException;
 
 import java.util.List;
 import java.util.Map;
@@ -49,18 +51,20 @@ public class GroqService {
                 "response_format", buildResponseFormat()
         );
 
+        try {
         Map<String, Object> apiResponse = restClient.post()
-        .uri("/chat/completions")
-        .body(requestBody)
-        .retrieve()
-        .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+                .uri("/chat/completions")
+                .body(requestBody)
+                .retrieve()
+                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
 
         String content = extractContent(apiResponse);
-
-        try {
-            return objectMapper.readValue(content, ActionItemsResponse.class);
+        return objectMapper.readValue(content, ActionItemsResponse.class);
+        } catch (RestClientException e) {
+        throw new AiServiceException(
+            "No se pudo contactar al servicio de IA. Intentá de nuevo en unos momentos.", e);
         } catch (Exception e) {
-            throw new RuntimeException("No se pudo interpretar la respuesta de la IA", e);
+        throw new AiServiceException("La respuesta de la IA no tuvo el formato esperado.", e);
         }
     }
 
